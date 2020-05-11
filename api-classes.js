@@ -55,26 +55,54 @@ class StoryList {
     // TODO - Implement this functions!
     // this function should return the newly created story so it can be used in
     // the script.js file where it will be appended to the DOM
+    newStory = new Story(response.data.story);
+    this.stories.unshift(newStory);
+    user.ownStories.unshift(newStory);
+    return newStory;
+  }
+
+  async deleteStory(storyId, httpVerb, user) {
+    // console.log(username);
+    const response = await axios({
+      url: `${BASE_URL}/stories/${storyId}`,
+      method: httpVerb,
+      data: {
+        token: user.loginToken,
+      },
+    });
+
+    // filter out the story whose ID we are removing
+    this.stories = this.stories.filter((story) => story.storyId !== storyId);
+
+    // do the same thing for the user's list of stories
+    user.ownStories = user.ownStories.filter((s) => s.storyId !== storyId);
+
     return response;
   }
 
-  async deleteFavorite(username, storyId) {
-    const response = await axios.delete(
-      `${BASE_URL}/users/${username.username}/favorites/${storyId}`,
-      {
+  async toggleFavorite(storyId, httpVerb, username) {
+    // console.log(username);
+    const response = await axios({
+      url: `${BASE_URL}/users/${username.username}/favorites/${storyId}`,
+      method: httpVerb,
+      data: {
         token: username.loginToken,
-      }
-    );
-    console.log(response);
+      },
+    });
+    // console.log(response);
+    return response;
   }
 
-  async addFavorite(username, storyId) {
-    const response = await axios.post(
-      `${BASE_URL}/users/${username.username}/favorites/${storyId}`,
-      {
+  async getUser(storyId, httpVerb, username) {
+    // console.log(username);
+    const response = await axios({
+      url: `${BASE_URL}/users/${username.username}/favorites/${storyId}`,
+      method: httpVerb,
+      data: {
         token: username.loginToken,
-      }
-    );
+      },
+    });
+    // console.log(response);
     return response;
   }
 }

@@ -12,7 +12,9 @@ $(async function () {
   const $navSubmit = $("#nav-submit");
   const $navFavorites = $("#nav-favorites");
   const $navAll = $("#nav-all");
-
+  const $navStories = $("#nav-stories");
+  const $myArticles = $("#my-articles");
+  const $favoritedArticles = $("#favorited-articles");
   // global storyList variable
   let storyList = null;
 
@@ -39,6 +41,7 @@ $(async function () {
     currentUser = userInstance;
     syncCurrentUserToLocalStorage();
     loginAndSubmitForm();
+    // activateStarClicks();
   });
 
   /**
@@ -72,7 +75,7 @@ $(async function () {
     location.reload();
   });
 
-  /**
+  /*
    * Event Handler for Clicking Login
    */
 
@@ -85,38 +88,15 @@ $(async function () {
 
   $navSubmit.on("click", function () {
     // Show the Login and Create Account Forms
-    // $loginForm.slideToggle();
     if (currentUser) {
       $allStoriesList.show();
       $submitForm.slideToggle();
+      // loadFavoritedStars();
     }
-
-    // $allStoriesList.toggle();
   });
 
-  $navAll.on("click", function (evt) {
-    evt.preventDefault();
-    document.getElementById("favorited-articles").classList.add("hidden");
-    counter = 0;
-  });
-
-  let counter = 0;
-  $navFavorites.on("click", function () {
-    document.getElementById("favorited-articles").classList.remove("hidden");
-    if (counter % 2 === 0) {
-      $allStoriesList.hide();
-      counter++;
-    } else {
-      document.getElementById("favorited-articles").classList.add("hidden");
-      $allStoriesList.show();
-      counter--;
-    }
-
-    // console.log(getFavorites);
-  });
   $submitForm.on("submit", async function (evt) {
     evt.preventDefault();
-
     let formValues = {};
     const getAuthor = $("#author");
     const getTitle = $("#title");
@@ -124,54 +104,235 @@ $(async function () {
     formValues.author = getAuthor.val();
     formValues.title = getTitle.val();
     formValues.url = getUrl.val();
-    const response = await storyList.addStory(currentUser, formValues);
-    // console.log(response);
-    generateStoryHTML(response.data.story);
-    generateStories();
+    await storyList.addStory(currentUser, formValues);
+    getAuthor.val("");
+    getTitle.val("");
+    getUrl.val("");
+    let onSubmit = 0;
+    generateStories(onSubmit);
     $submitForm.slideToggle();
   });
+
+  $navAll.on("click", function (evt) {
+    evt.preventDefault();
+    loadFavoritedStars();
+    $myArticles.hide();
+    $favoritedArticles.hide();
+    $allStoriesList.show();
+  });
+
+  $navFavorites.on("click", async function (evt) {
+    // const token = localStorage.getItem("token");
+    // const username = localStorage.getItem("username");
+
+    // let updatedCurrentUser = await User.getLoggedInUser(token, username);
+
+    if (
+      currentUser.favorites.length === 0 &&
+      $favoritedArticles.children().length === 0
+    ) {
+      $favoritedArticles.append(
+        "<h5>No favorites have been added by user yet!</h5>"
+      );
+    } else if ($favoritedArticles.children().length > 1) {
+      $favoritedArticles.children("h5").text("");
+    }
+    $favoritedArticles.show();
+    evt.preventDefault();
+    $myArticles.hide();
+    $allStoriesList.hide();
+  });
+
+  $navStories.on("click", function (evt) {
+    evt.preventDefault();
+    $myArticles.show();
+    $allStoriesList.hide();
+    $favoritedArticles.hide();
+    document.getElementById("my-articles").classList.remove("hidden");
+    loadMyStories();
+  });
+
+  $(".articles-container").on("click", ".fa-star", async function (evt) {
+    if (currentUser) {
+      const $tgt = $(evt.target);
+      const $closestLi = $tgt.closest("li");
+      const storyId = $closestLi.attr("id");
+
+      // console.log($tgt);
+      // if the item is already favorited
+      if ($tgt.hasClass("fas")) {
+        // remove the favorite from the user's list
+        const response = await storyList.toggleFavorite(
+          storyId,
+          "Delete",
+          currentUser
+        );
+
+        // then change the class to be an empty star
+        $tgt.closest("i").toggleClass("fas far");
+        deleteFavorites(response, storyId);
+      } else {
+        // the item is un-favorited
+        const response = await storyList.toggleFavorite(
+          storyId,
+          "Post",
+          currentUser
+        );
+
+        addFavorites(response, storyId);
+
+        $tgt.closest("i").toggleClass("fas far");
+      }
+    }
+  });
+
+  $(".articles-container").on("click", ".fa-trash", async function (evt) {
+    if (currentUser) {
+      const $tgt = $(evt.target);
+      const $closestLi = $tgt.closest("li");
+      const storyId = $closestLi.attr("id");
+
+      // if the item is already favorited
+
+      // remove the favorite from the user's list
+      const response = await storyList.deleteStory(
+        storyId,
+        "Delete",
+        currentUser
+      );
+
+      hideElements();
+      generateStories();
+      deleteFavorites(response, storyId);
+      $allStoriesList.show();
+      // console.log(response);
+    }
+  });
+  async function loadMyStories() {
+    $myArticles.empty();
+    // // let's see if we're logged in
+    const token = localStorage.getItem("token");
+    const username = localStorage.getItem("username");
+
+    // // if there is a token in localStorage, call User.getLoggedInUser
+    // //  to get an instance of User with the right details
+    // //  this is designed to run once, on page load
+    // if (token === null) return;
+    currentUser = await User.getLoggedInUser(token, username);
+    const myStories = currentUser.ownStories;
+    const myFavoritedStories = currentUser.favorites;
+    if (myStories.length == 0) {
+      $myArticles.append("<h5> No stories added by user yet! </h5>");
+    }
+
+    for (let i = 0; i < myStories.length; i++) {
+      let ownStoryHTML = generateMyStoryHTML(myStories[i]);
+      for (let j = 0; j < myFavoritedStories.length; j++) {
+        if (myFavoritedStories[j].storyId === myStories[i].storyId) {
+          ownStoryHTML = generateStoryHTMLFavorites(myStories[i], true);
+        }
+      }
+      ownStoryHTML.on("click", ".fas", function () {
+        refreshStars(this.dataset.link);
+      });
+      $myArticles.append(ownStoryHTML);
+    }
+  }
+
   /**
    * Event handler for Navigation to Homepage
    */
 
-  $("body").on("click", "#nav-all", async function () {
-    hideElements();
-    await generateStories();
-    $allStoriesList.show();
-  });
+  async function deleteFavorites(response, starStoryId) {
+    // console.log(response);
+    const theUlchildren = Array.from(
+      document.getElementById("favorited-articles").children
+    );
 
-  function activateStars() {
-    const allStars = Array.from(document.getElementsByClassName("fa-star"));
-    for (let star of allStars) {
-      const tagStar = star.getAttribute("id");
-      star.addEventListener("click", async function () {
-        this.classList.toggle("far");
-        this.classList.toggle("fas");
-        if (this.classList.contains("far")) {
-          storyList.deleteFavorite(currentUser, tagStar);
-        } else {
-          const response = await storyList.addFavorite(currentUser, tagStar);
-          const $theUl = $("#favorited-articles");
-          for (let i = 0; i < $theUl.length; i++) {
-            const result = generateStoryHTML(
-              response.data.user.favorites[i + $theUl.length - 1]
-            );
-            console.log(response.data.user.favorites);
-            // console.log(result);
-            $theUl.append(result);
-          }
-        }
-      });
+    const allArticles = Array.from(
+      document.getElementById("all-articles-list").children
+    );
+    for (let i = 0; i < theUlchildren.length; i++) {
+      for (let j = 0; j < allArticles.length; j++) {
+        if (theUlchildren[i].getAttribute("id") === starStoryId)
+          theUlchildren[i].remove();
+      }
+    }
+
+    return response;
+  }
+
+  async function addFavorites(response, starStoryId) {
+    // console.log(response);
+    let favorites = [];
+    for (let i = 0; i < response.data.user.favorites.length; i++) {
+      favorites[i] = response.data.user.favorites[i];
+    }
+
+    for (let i = 0; i < favorites.length; i++) {
+      if (favorites[i].storyId === starStoryId) {
+        const aFavoriteHTML = generateStoryHTMLFavorites(
+          response.data.user.favorites[i]
+        );
+        aFavoriteHTML.on("click", ".fas", function () {
+          refreshStars(starStoryId);
+        });
+        $favoritedArticles.append(aFavoriteHTML);
+      }
     }
   }
 
-  // function createList(url) {
-  //   const getUL = document.getElementById("favorited-articles");
-  //   const createLi = document.createElement("li");
-  //   createLi.innerText = url;
-  //   getUL.append(createLi);
-  //   console.log(getUL);
-  // }
+  async function loadFavoritedStars() {
+    const token = localStorage.getItem("token");
+    const username = localStorage.getItem("username");
+    let user = await User.getLoggedInUser(token, username);
+    if (user === null) return;
+    const response = user.favorites;
+    Object.values(response).forEach((value) => {
+      const starredItem = document.querySelector(
+        `[data-link="${value.storyId}"]`
+      );
+      // console.log(starredItem);
+      starredItem.classList.remove("far");
+      starredItem.classList.add("fas");
+    });
+  }
+
+  async function loadFavoritedList() {
+    $favoritedArticles.empty();
+    const token = localStorage.getItem("token");
+    const username = localStorage.getItem("username");
+    if (currentUser === null) return;
+    currentUser = await User.getLoggedInUser(token, username);
+    const response = currentUser.favorites;
+    // console.log(response);
+    for (let i = 0; i < response.length; i++) {
+      const test = generateStoryHTMLFavorites(response[i]);
+      test.on("click", ".fa-star", async function () {
+        const response = currentUser.favorites;
+        for (let j = 0; j < response.length; j++) {
+          refreshStars(response[j].storyId);
+          console.log(response);
+        }
+      });
+      $favoritedArticles.append(test);
+    }
+  }
+
+  function refreshStars(unfavoritedID) {
+    const allStars = Array.from(
+      document.getElementById("all-articles-list").children
+    );
+    for (let star of allStars) {
+      const starStoryId = star.getAttribute("id");
+      if (starStoryId === unfavoritedID) {
+        const unfavoritedStar = $(`#${starStoryId}`);
+        const changeUnfavoritedStar = $(unfavoritedStar.find("i"));
+        changeUnfavoritedStar.toggleClass("fas");
+        changeUnfavoritedStar.toggleClass("far");
+      }
+    }
+  }
 
   /**
    * On page load, checks local storage to see if the user is already logged in.
@@ -186,6 +347,7 @@ $(async function () {
     // if there is a token in localStorage, call User.getLoggedInUser
     //  to get an instance of User with the right details
     //  this is designed to run once, on page load
+    // if (username === null) return;
     currentUser = await User.getLoggedInUser(token, username);
     await generateStories();
 
@@ -219,7 +381,7 @@ $(async function () {
    *  which will generate a storyListInstance. Then render it.
    */
 
-  async function generateStories() {
+  async function generateStories(onSubmit) {
     // get an instance of StoryList
     const storyListInstance = await StoryList.getStories();
     // update our global variable
@@ -232,7 +394,11 @@ $(async function () {
       const result = generateStoryHTML(story);
       $allStoriesList.append(result);
     }
-    activateStars();
+
+    if (onSubmit != 0) {
+      loadFavoritedList();
+    }
+    loadFavoritedStars();
   }
 
   /**
@@ -246,7 +412,7 @@ $(async function () {
     const storyMarkup = $(`
       <li id="${story.storyId}">
        <span class="star">
-          <i class ="fa-star far" id ="${story.storyId}">
+          <i class ="far fa-star" data-link ="${story.storyId}">
           </i>
         </span>
         <a class="article-link" href="${story.url}" target="a_blank">
@@ -254,6 +420,76 @@ $(async function () {
         </a>
         <small class="article-author">by ${story.author}</small>
         <small class="article-hostname ${hostName}">(${hostName})</small>
+        <small class="article-username">posted by ${story.username}</small>
+      </li>
+    `);
+
+    return storyMarkup;
+  }
+
+  function generateStoryHTMLFavorites(story, myStoryFavorited) {
+    let hostName = getHostName(story.url);
+    let storyMarkup;
+    if (myStoryFavorited === true) {
+      storyMarkup = $(`
+      <li id="${story.storyId}">
+       <span class="star">
+          <i class ="fas fa-star" data-link ="${story.storyId}">
+          </i>
+        </span>
+        <a class="article-link" href="${story.url}" target="a_blank">
+          <strong>${story.title}</strong>
+        </a>
+        <small class="article-author">by ${story.author}</small>
+        <small class="article-hostname ${hostName}">(${hostName})</small>
+          <span class="trash-can">
+          <i class ="fas fa-trash" data-link ="${story.storyId}">
+          </i>
+        </span>
+        <small class="article-username">posted by ${story.username}</small>
+      </li>
+    `);
+    }
+    // render story markup
+    else {
+      storyMarkup = $(`
+      <li id="${story.storyId}">
+       <span class="star">
+          <i class ="fas fa-star" data-link ="${story.storyId}">
+          </i>
+        </span>
+        <a class="article-link" href="${story.url}" target="a_blank">
+          <strong>${story.title}</strong>
+        </a>
+        <small class="article-author">by ${story.author}</small>
+        <small class="article-hostname ${hostName}">(${hostName})</small>
+        <small class="article-username">posted by ${story.username}</small>
+      </li>
+    `);
+    }
+
+    return storyMarkup;
+  }
+
+  function generateMyStoryHTML(story) {
+    let hostName = getHostName(story.url);
+
+    // render story markup
+    const storyMarkup = $(`
+      <li id="${story.storyId}">
+       <span class="star">
+          <i class ="far fa-star" data-link ="${story.storyId}">
+          </i>
+        </span>
+        <a class="article-link" href="${story.url}" target="a_blank">
+          <strong>${story.title}</strong>
+        </a>
+        <small class="article-author">by ${story.author}</small>
+        <small class="article-hostname ${hostName}">(${hostName})</small>
+        <span class="trash-can">
+          <i class ="fas fa-trash" data-link ="${story.storyId}">
+          </i>
+        </span>
         <small class="article-username">posted by ${story.username}</small>
       </li>
     `);
