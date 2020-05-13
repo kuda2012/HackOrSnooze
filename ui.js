@@ -32,13 +32,32 @@ $(async function () {
     evt.preventDefault(); // no page-refresh on submit
 
     // grab the username and password
-    const username = $("#login-username").val();
+    const username = $("#login-password").val();
     const password = $("#login-password").val();
 
     // call the login static method to build a user instance
-    const userInstance = await User.login(username, password);
+    let userInstance;
+    try {
+      userInstance = await User.login(username, password);
+    } catch (err) {
+      alert("Incorrect Username or Password");
+    }
+    // console.log(userInstance);
     // set the global user to the user instance
+
     currentUser = userInstance;
+
+    console.log(currentUser);
+    const pinNameToLogout = $("a > small");
+    pinNameToLogout.text(`${currentUser.name}(logout)`);
+    const pinNameToUserInfo = $("#profile-name");
+    pinNameToUserInfo.text(`Name: ${currentUser.name}`);
+    const pinUsernameToUserInfo = $("#profile-username");
+    pinUsernameToUserInfo.text(`Username: ${currentUser.username}`);
+    const pinAccountCreationToUserInfo = $("#profile-account-date");
+    pinAccountCreationToUserInfo.text(
+      `Account Created: ${currentUser.createdAt.slice(0, 10)}`
+    );
     syncCurrentUserToLocalStorage();
     loginAndSubmitForm();
     // activateStarClicks();
@@ -58,8 +77,25 @@ $(async function () {
     let password = $("#create-account-password").val();
 
     // call the create method, which calls the API and then builds a new user instance
-    const newUser = await User.create(username, password, name);
+    let newUser;
+    try {
+      newUser = await User.create(username, password, name);
+    } catch (err) {
+      alert("Username already taken, try a different one");
+      return;
+    }
+
     currentUser = newUser;
+    const pinNameToLogout = $("a > small");
+    pinNameToLogout.text(`${currentUser.name}(logout)`);
+    const pinNameToUserInfo = $("#profile-name");
+    pinNameToUserInfo.text(`Name: ${currentUser.name}`);
+    const pinUsernameToUserInfo = $("#profile-username");
+    pinUsernameToUserInfo.text(`Username: ${currentUser.username}`);
+    const pinAccountCreationToUserInfo = $("#profile-account-date");
+    pinAccountCreationToUserInfo.text(
+      `Account Created: ${currentUser.createdAt.slice(0, 10)}`
+    );
     syncCurrentUserToLocalStorage();
     loginAndSubmitForm();
   });
@@ -108,8 +144,7 @@ $(async function () {
     getAuthor.val("");
     getTitle.val("");
     getUrl.val("");
-    let onSubmit = 0;
-    generateStories(onSubmit);
+    generateStories();
     $submitForm.slideToggle();
   });
 
@@ -394,10 +429,7 @@ $(async function () {
       const result = generateStoryHTML(story);
       $allStoriesList.append(result);
     }
-
-    if (onSubmit != 0) {
-      loadFavoritedList();
-    }
+    loadFavoritedList();
     loadFavoritedStars();
   }
 
@@ -515,6 +547,16 @@ $(async function () {
     $navLogin.hide();
     $navContent.show();
     $navLogOut.show();
+    const pinNameToLogout = $("a > small");
+    pinNameToLogout.text(`${currentUser.name}(logout)`);
+    const pinNameToUserInfo = $("#profile-name");
+    pinNameToUserInfo.text(`Name: ${currentUser.name}`);
+    const pinUsernameToUserInfo = $("#profile-username");
+    pinUsernameToUserInfo.text(`Username: ${currentUser.username}`);
+    const pinAccountCreationToUserInfo = $("#profile-account-date");
+    pinAccountCreationToUserInfo.text(
+      `Account Created: ${currentUser.createdAt.slice(0, 10)}`
+    );
   }
 
   /* simple function to pull the hostname from a URL */
