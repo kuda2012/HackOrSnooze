@@ -48,16 +48,7 @@ $(async function () {
     currentUser = userInstance;
 
     console.log(currentUser);
-    const pinNameToLogout = $("a > small");
-    pinNameToLogout.text(`${currentUser.name}(logout)`);
-    const pinNameToUserInfo = $("#profile-name");
-    pinNameToUserInfo.text(`Name: ${currentUser.name}`);
-    const pinUsernameToUserInfo = $("#profile-username");
-    pinUsernameToUserInfo.text(`Username: ${currentUser.username}`);
-    const pinAccountCreationToUserInfo = $("#profile-account-date");
-    pinAccountCreationToUserInfo.text(
-      `Account Created: ${currentUser.createdAt.slice(0, 10)}`
-    );
+    showUserInfo();
     syncCurrentUserToLocalStorage();
     loginAndSubmitForm();
     // activateStarClicks();
@@ -86,16 +77,7 @@ $(async function () {
     }
 
     currentUser = newUser;
-    const pinNameToLogout = $("a > small");
-    pinNameToLogout.text(`${currentUser.name}(logout)`);
-    const pinNameToUserInfo = $("#profile-name");
-    pinNameToUserInfo.text(`Name: ${currentUser.name}`);
-    const pinUsernameToUserInfo = $("#profile-username");
-    pinUsernameToUserInfo.text(`Username: ${currentUser.username}`);
-    const pinAccountCreationToUserInfo = $("#profile-account-date");
-    pinAccountCreationToUserInfo.text(
-      `Account Created: ${currentUser.createdAt.slice(0, 10)}`
-    );
+    showUserInfo();
     syncCurrentUserToLocalStorage();
     loginAndSubmitForm();
   });
@@ -547,6 +529,10 @@ $(async function () {
     $navLogin.hide();
     $navContent.show();
     $navLogOut.show();
+    showUserInfo();
+  }
+
+  function showUserInfo() {
     const pinNameToLogout = $("a > small");
     pinNameToLogout.text(`${currentUser.name}(logout)`);
     const pinNameToUserInfo = $("#profile-name");
@@ -558,7 +544,6 @@ $(async function () {
       `Account Created: ${currentUser.createdAt.slice(0, 10)}`
     );
   }
-
   /* simple function to pull the hostname from a URL */
 
   function getHostName(url) {
